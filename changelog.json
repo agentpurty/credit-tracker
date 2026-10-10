@@ -1,0 +1,38 @@
+[
+ {
+  "version": "1.1",
+  "date": "2026-10-10",
+  "notes": [
+   "Map: ROUTE with number pad (last ZIP is selected so typing replaces it), tappable Active ZIPs with counts, same rule for counts and the route, and a list of who was left out and why",
+   "Map: ROUTE ALL (every Active pin) and Route selected (search, tick, Include all, Paste names with close-spelling matching); routes open Google Maps in parts of 10 stops; single stops can open Apple Maps",
+   "Map: search highlights and zooms to a person; tapping a pin shows a name card with a small person icon to open the profile",
+   "Map: gold ring on pins run today (since midnight)",
+   "Map: DAILY RUN with numbered markers, path line and Runs list; Last 12h / Yesterday / \u25c0 \u25b6 day selector; opens on the latest day with runs when the last 12 hours are empty",
+   "Addresses: several per profile with confirmation status and colored chip (Current, Moved, Unconfirmed, Fake, Abandoned), short note, primary, auto-filled ZIP (Census, then OpenStreetMap)",
+   "Phones: several per profile with type (Confirmed, Relative, Spouse, Disconnected, Old Number), name note and primary",
+   "Profile: birthday, reason speculated, language, employer and hours, linked profiles (up to 3), Roaches status",
+   "Cards: EPO, Paid In, amount due, Total RV; resolution note; resolved cards show days past due when resolved; Resolved history",
+   "Files: photos per profile (ID, Lease, Income, Other) stored on the phone, with viewer and delete; included in backups",
+   "\"Is this the same person?\" check when creating a profile or changing a name, phone or address",
+   "Active list layout: 1 or 2 columns (Settings, default 2); 2-column cards keep names on one line and shrink to fit; quick view spans both columns",
+   "Quick view: addresses (tap for directions), phones, cards, last run line, Open profile and Log run",
+   "Run History: \"Last run\" summary line, tap to expand, delete a run; runs are saved before Messages opens",
+   "Trackers tab: cards charging off by month with Total RV",
+   "Works when hosted in a subfolder (e.g. GitHub Pages)"
+  ]
+ },
+ {
+  "version": "1.0",
+  "date": "2026-10-10",
+  "notes": [
+   "First iOS version (web app for iPhone, add to Home Screen).",
+   "Active list sorted like Android: pinned, FPD, SPD, then furthest past due.",
+   "Profiles with addresses (Apple/Google Maps), phones (call/text), status, notes and agreement cards.",
+   "Per-card Resolved with reasons, including Returned and Company $50 payoff.",
+   "Charged off (previous month + A-Z) and Resolved lists.",
+   "Run quick-log buttons (N/A, N/A LDT, Answered, Note) that log to Run History and open Messages.",
+   "Map of pins (needs internet).",
+   "Backup export/import in Settings. Works offline."
+  ]
+ }
+]

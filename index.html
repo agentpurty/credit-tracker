@@ -1,0 +1,28 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Credit Tracker">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#141012">
+<title>Credit Tracker</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="styles.css">
+</head><body>
+<header id="top"><button id="back" class="navbtn hidden">‹ Back</button><button id="gear" class="navbtn" aria-label="Settings">⚙︎</button><h1 id="title">Credit Tracker</h1><button id="addBtn" class="navbtn right" aria-label="New profile">＋</button></header>
+<main id="view"></main>
+<nav id="tabs"><button data-tab="active" class="on">Active</button><button data-tab="charged">Charged off</button><button data-tab="resolved">Resolved</button><button data-tab="map">Map</button><button data-tab="trackers">Trackers</button></nav>
+<div id="sheet" class="hidden"></div>
+<div id="toast" class="hidden"></div>
+<div id="update" class="hidden">Update available, tap to refresh</div>
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="js/db.js"></script>
+<script src="js/model.js"></script>
+<script src="js/app.js"></script>
+<script src="js/map.js"></script>
+</body></html>
