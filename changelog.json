@@ -3,7 +3,7 @@
   "version": "1.2",
   "date": "2026-10-10",
   "notes": [
-   "Fix: map background was blank (wrong map tile address); street map now loads",
+   "Fix: map background was blank; the old map tile service (CARTO) now needs a key, so the map now uses OpenStreetMap tiles, shown dark to match the app",
    "Map resizes correctly after rotating the phone or switching tabs"
   ]
  },
