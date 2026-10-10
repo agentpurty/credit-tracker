@@ -11,7 +11,7 @@ function renderMap(v){
    <div id="msresults"></div><div id="daybar" class="${st.daily?'':'hidden'}"></div><div id="map"></div><div id="maphint" class="lbl hint">${st.daily?'':'Gold ring = ran today'}</div><div id="runlist"></div>`;
   if(!window.L){ $('#map').outerHTML='<div class="empty">Map could not load.</div>'; return; }
   try{ st.map?.remove(); }catch{} const map=L.map('map',{zoomControl:false,attributionControl:true}); st.map=map;
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',maxZoom:19,className:'darktiles'}).addTo(map);
+  addTiles(map);
   if(st.view) map.setView(st.view.center, st.view.zoom); else map.setView([42.73,-84.55],11);
   map.on('moveend',()=>st.view={center:map.getCenter(),zoom:map.getZoom()});
   map.on('popupopen',e=>{ const b=e.popup.getElement().querySelector('[data-pid]'); if(b) b.onclick=()=>openProfile(+b.dataset.pid); });
@@ -23,6 +23,17 @@ function renderMap(v){
   if(st.daily) drawDaily(); else drawPins(!st.view);
   setTimeout(()=>map.invalidateSize(),50); setTimeout(()=>map.invalidateSize(),400); window.onresize=()=>{ if(mapState.map===map) map.invalidateSize(); };
   queueGeocode();
+}
+/* Tiles: OpenStreetMap first; after repeated tile errors switch to Esri World Street Map (no key, no Referer needed). */
+const TILE_SOURCES=[
+  ['https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}],
+  ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri — Esri, HERE, Garmin, USGS, OpenStreetMap contributors'}]];
+function addTiles(map, i=+(localStorage.getItem('ct-tiles')||0)){
+  const [url,o]=TILE_SOURCES[i]||TILE_SOURCES[0]; let errs=0, oks=0;
+  const layer=L.tileLayer(url,{...o,referrerPolicy:'strict-origin-when-cross-origin',crossOrigin:false}).addTo(map);
+  layer.on('tileload',()=>{ oks++; });
+  layer.on('tileerror',()=>{ errs++; if(errs>=4&&oks===0&&i+1<TILE_SOURCES.length){ map.removeLayer(layer); localStorage.setItem('ct-tiles',i+1); addTiles(map,i+1); } });
+  mapState.tiles=layer;
 }
 function drawPins(fit){
   const st=mapState, map=st.map; st.layer.clearLayers(); st.markers.clear();

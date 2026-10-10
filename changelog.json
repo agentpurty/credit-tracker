@@ -1,5 +1,14 @@
 [
  {
+  "version": "1.3",
+  "date": "2026-10-10",
+  "notes": [
+   "Fix: map could stay gray on iPhone when an older version stayed installed; updates now install and reload on their own",
+   "App files load fresh from the internet when online (saved copy used only offline); map tiles are never cached by the app",
+   "Map uses standard OpenStreetMap colors (no dark filter) and switches to Esri street map automatically if OpenStreetMap tiles fail"
+  ]
+ },
+ {
   "version": "1.2",
   "date": "2026-10-10",
   "notes": [
