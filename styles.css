@@ -73,7 +73,7 @@ label.check{display:flex;gap:8px;align-items:center;font-size:15px;color:var(--t
 #update{position:fixed;top:calc(var(--st) + 56px);left:12px;right:12px;background:var(--gold);color:#1a1a1a;text-align:center;font-weight:600;padding:12px;border-radius:12px;z-index:2000}
 .mapbar{display:flex;gap:6px;align-items:center}.mapbar .search{margin:0;flex:1;min-width:0}
 #daybar{display:flex;gap:6px;margin-top:8px}#daybar .btn{flex:1}
-#map{height:calc(100vh - var(--st) - var(--sb) - 230px);min-height:300px;border-radius:12px;margin-top:8px;background:#222}
+#map{height:calc(100dvh - var(--st) - var(--sb) - 230px);min-height:300px;border-radius:12px;margin-top:8px;background:#222}
 .leaflet-popup.npop .leaflet-popup-content-wrapper{background:#241b1e;color:var(--tx);border-radius:12px}
 .leaflet-popup.npop .leaflet-popup-tip{background:#241b1e}.leaflet-popup.npop .leaflet-popup-content{margin:10px 12px;min-width:170px;max-width:230px}
 .ncard{display:flex;align-items:center;gap:8px}.nname{font-weight:700;font-size:15px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

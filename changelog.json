@@ -1,5 +1,13 @@
 [
  {
+  "version": "1.2",
+  "date": "2026-10-10",
+  "notes": [
+   "Fix: map background was blank (wrong map tile address); street map now loads",
+   "Map resizes correctly after rotating the phone or switching tabs"
+  ]
+ },
+ {
   "version": "1.1",
   "date": "2026-10-10",
   "notes": [

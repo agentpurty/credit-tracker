@@ -11,7 +11,7 @@ function renderMap(v){
    <div id="msresults"></div><div id="daybar" class="${st.daily?'':'hidden'}"></div><div id="map"></div><div id="maphint" class="lbl hint">${st.daily?'':'Gold ring = ran today'}</div><div id="runlist"></div>`;
   if(!window.L){ $('#map').outerHTML='<div class="empty">Map could not load.</div>'; return; }
   try{ st.map?.remove(); }catch{} const map=L.map('map',{zoomControl:false,attributionControl:true}); st.map=map;
-  L.tileLayer('https://{s}.basemap.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO',maxZoom:19,subdomains:'abcd'}).addTo(map);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO',maxZoom:19,subdomains:'abcd'}).addTo(map);
   if(st.view) map.setView(st.view.center, st.view.zoom); else map.setView([42.73,-84.55],11);
   map.on('moveend',()=>st.view={center:map.getCenter(),zoom:map.getZoom()});
   map.on('popupopen',e=>{ const b=e.popup.getElement().querySelector('[data-pid]'); if(b) b.onclick=()=>openProfile(+b.dataset.pid); });
@@ -21,7 +21,7 @@ function renderMap(v){
   $('#dailyBtn').onclick=()=>{ st.daily=!st.daily; st.dayView=null; render(); };
   bindMapSearch();
   if(st.daily) drawDaily(); else drawPins(!st.view);
-  setTimeout(()=>map.invalidateSize(),50);
+  setTimeout(()=>map.invalidateSize(),50); setTimeout(()=>map.invalidateSize(),400); window.onresize=()=>{ if(mapState.map===map) map.invalidateSize(); };
   queueGeocode();
 }
 function drawPins(fit){

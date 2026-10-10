@@ -1,6 +1,6 @@
 // Bump CACHE when publishing an update; users then see "Update available, tap to refresh".
 // All paths are relative, so this works at / or under a subpath such as /credit-tracker/.
-const CACHE='credit-tracker-ios-1.1.0';
+const CACHE='credit-tracker-ios-1.2.0';
 const ASSETS=['./','index.html','styles.css','js/db.js','js/model.js','js/app.js','js/map.js','changelog.json','manifest.webmanifest',
  'icons/icon-180.png','icons/icon-192.png','icons/icon-512.png','vendor/leaflet/leaflet.js','vendor/leaflet/leaflet.css',
  'vendor/leaflet/images/marker-icon.png','vendor/leaflet/images/marker-icon-2x.png','vendor/leaflet/images/marker-shadow.png','vendor/leaflet/images/layers.png','vendor/leaflet/images/layers-2x.png'];
