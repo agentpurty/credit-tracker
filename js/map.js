@@ -1,130 +1,173 @@
+/* Map tab: Leaflet + OpenStreetMap. Scanned stops are numbered in scan order; manual markers have their own pin.
+ * No route button or routing on purpose (routing may come back later as a separate module). */
 'use strict';
-/* Map tab: pins, gold ring (ran today), name card, search, ROUTE (ZIP / ALL / selected), DAILY RUN. */
-window.mapState = {daily:false, view:null, map:null, layer:null, keep:false, dirty:false, markers:new Map()};
-const pinColor = p => ({FPD:'#d9534f',SPD:'#e6c34a'})[badge(p)] || '#c98f95';
-function nameCard(p, extra=''){ return `<div class="ncard"><span class="nname">${esc(cardName(p))}</span><button class="nopen" data-pid="${p.id}" aria-label="Open profile">${ICON_PERSON}</button></div><div class="nsub">${esc(daysLabel(p))}${extra}</div><div class="nsub">${esc(addrText(p))}</div>`; }
+const MapView = (() => {
+  const { $, esc, toast, modal, confirm, when } = UI;
+  let map, layer, tiles, ready = false, selected = null, fittedN = -1, missingN = 0;
+  const markerAddr = m => m.address;
+  const stopAddr = s => SheetParser.address(s);
 
-function renderMap(v){
-  $('#title').textContent='Map';
-  const st=mapState;
-  v.innerHTML=`<div class="mapbar"><input class="search" id="msearch" type="search" placeholder="Find someone on the map"><button class="btn small" id="routeBtn">ROUTE</button><button class="btn small ${st.daily?'on-gold':'ghost'}" id="dailyBtn">DAILY RUN</button></div>
-   <div id="msresults"></div><div id="daybar" class="${st.daily?'':'hidden'}"></div><div id="map"></div><div id="maphint" class="lbl hint">${st.daily?'':'Gold ring = ran today'}</div><div id="runlist"></div>`;
-  if(!window.L){ $('#map').outerHTML='<div class="empty">Map could not load.</div>'; return; }
-  try{ st.map?.remove(); }catch{} const map=L.map('map',{zoomControl:false,attributionControl:true}); st.map=map;
-  addTiles(map);
-  if(st.view) map.setView(st.view.center, st.view.zoom); else map.setView([42.73,-84.55],11);
-  map.on('moveend',()=>st.view={center:map.getCenter(),zoom:map.getZoom()});
-  map.on('popupopen',e=>{ const b=e.popup.getElement().querySelector('[data-pid]'); if(b) b.onclick=()=>openProfile(+b.dataset.pid); });
-  st.layer=L.layerGroup().addTo(map);
-  st.refreshPins=()=>{ if(!st.daily) drawPins(false); };
-  $('#routeBtn').onclick=routeSheet;
-  $('#dailyBtn').onclick=()=>{ st.daily=!st.daily; st.dayView=null; render(); };
-  bindMapSearch();
-  if(st.daily) drawDaily(); else drawPins(!st.view);
-  setTimeout(()=>map.invalidateSize(),50); setTimeout(()=>map.invalidateSize(),400); window.onresize=()=>{ if(mapState.map===map) map.invalidateSize(); };
-  queueGeocode();
-}
-/* Tiles: OpenStreetMap first; after repeated tile errors switch to Esri World Street Map (no key, no Referer needed). */
-const TILE_SOURCES=[
-  ['https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}],
-  ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri — Esri, HERE, Garmin, USGS, OpenStreetMap contributors'}]];
-function addTiles(map, i=+(localStorage.getItem('ct-tiles')||0)){
-  const [url,o]=TILE_SOURCES[i]||TILE_SOURCES[0]; let errs=0, oks=0;
-  const layer=L.tileLayer(url,{...o,referrerPolicy:'strict-origin-when-cross-origin',crossOrigin:false}).addTo(map);
-  layer.on('tileload',()=>{ oks++; });
-  layer.on('tileerror',()=>{ errs++; if(errs>=4&&oks===0&&i+1<TILE_SOURCES.length){ map.removeLayer(layer); localStorage.setItem('ct-tiles',i+1); addTiles(map,i+1); } });
-  mapState.tiles=layer;
-}
-function drawPins(fit){
-  const st=mapState, map=st.map; st.layer.clearLayers(); st.markers.clear();
-  const ran=ranTodayIds(people); const pts=[];
-  people.filter(p=>isActiveList(p)&&p.status==='Active').forEach(p=>{ const loc=located(p); if(!loc) return; pts.push(loc);
-    if(ran.has(p.id)) L.circleMarker(loc,{radius:14,color:'#1a1a1a',weight:1,fillColor:'#f2c14e',fillOpacity:1,interactive:false}).addTo(st.layer);
-    const m=L.circleMarker(loc,{radius:9,color:'#fff',weight:2,fillColor:pinColor(p),fillOpacity:1}).addTo(st.layer).bindPopup(nameCard(p),{closeButton:false,className:'npop'});
-    st.markers.set(p.id,m); });
-  if(fit&&pts.length) map.fitBounds(pts,{padding:[30,30],maxZoom:14});
-}
-function bindMapSearch(){
-  const inp=$('#msearch'), out=$('#msresults');
-  inp.oninput=()=>{ const q=inp.value.trim(); if(!q){ out.innerHTML=''; return; }
-    const hits=filterNames(people.filter(p=>!mapState.daily?isActiveList(p):true),q).slice(0,6);
-    out.innerHTML=`<div class="group">${hits.map(p=>`<div class="item tap" data-h="${p.id}"><span>${esc(cardName(p))}</span><span class="lbl">${located(p)?'':'not on map'}</span></div>`).join('')||'<div class="item lbl">No match</div>'}</div>`;
-    $$('[data-h]',out).forEach(r=>r.onclick=()=>{ const p=byId(+r.dataset.h); out.innerHTML=''; inp.value=''; inp.blur(); highlight(p); }); };
-}
-function highlight(p){ const loc=located(p), map=mapState.map; if(!loc){ toast(`${cardName(p)} isn't on the map yet`); return; }
-  map.flyTo(loc, Math.max(map.getZoom()+1,15), {duration:.6});
-  const halo=L.circleMarker(loc,{radius:22,color:'#f2c14e',weight:4,fill:false,className:'halo'}).addTo(map); setTimeout(()=>halo.remove(),4000);
-  const m=mapState.markers.get(p.id); if(m) setTimeout(()=>m.openPopup(),650); else L.popup({closeButton:false,className:'npop'}).setLatLng(loc).setContent(nameCard(p)).openOn(map); }
+  function navUrl(address) {
+    const d = encodeURIComponent(SheetParser.stripUnits(address));
+    return Store.settings.nav === 'google'
+      ? `https://www.google.com/maps/dir/?api=1&destination=${d}&travelmode=driving`
+      : `https://maps.apple.com/?daddr=${d}&dirflg=d`;
+  }
+  const telUrl = p => 'tel:' + String(p).replace(/[^\d+]/g, '');
 
-/* ---- ROUTE ---- */
-function routeSheet(){
-  const zips=activeZips(people); let zip=settings.lastZip||''; let fresh=true;
-  sheet(`<h3>ROUTE</h3><div class="zipbox ${zip?'sel':''}" id="zb">${esc(zip)||'<span class="lbl">ZIP</span>'}</div>
-   <div class="pad">${[1,2,3,4,5,6,7,8,9,'⌫',0,'✓'].map(k=>`<button class="btn ghost" data-k="${k}">${k}</button>`).join('')}</div>
-   <label>Active ZIPs (tap to route)</label><div class="zips">${zips.map(([z,n])=>`<button class="btn small ghost" data-z="${z}">${z} (${n})</button>`).join('')||'<span class="lbl">None</span>'}</div>
-   <button class="btn full" id="rall">ROUTE ALL (every Active pin)</button><button class="btn ghost full" id="rsel">Route selected…</button><button class="btn ghost full" data-close>Cancel</button>`, s=>{
-    const show=()=>{ const b=$('#zb',s); b.classList.toggle('sel',fresh&&!!zip); b.innerHTML=esc(zip)||'<span class="lbl">ZIP</span>'; };
-    $$('[data-k]',s).forEach(b=>b.onclick=()=>{ const k=b.dataset.k;
-      if(k==='⌫'){ zip=fresh?'':zip.slice(0,-1); fresh=false; } else if(k==='✓'){ return routeZip(zip); } else { if(fresh){ zip=''; fresh=false; } if(zip.length<5) zip+=k; } show(); });
-    $$('[data-z]',s).forEach(b=>b.onclick=()=>routeZip(b.dataset.z));
-    $('#rall',s).onclick=()=>{ const st=pinnedStops(people); if(!st.length){ toast('No Active accounts are on the map yet'); return; } showRoute('ALL', orderStops(st), []); };
-    $('#rsel',s).onclick=pickSheet;
-  });
-}
-function routeZip(zip){ if(!/^\d{5}$/.test(zip)){ toast('Type a 5-digit ZIP'); return; } settings.lastZip=zip; saveSettings();
-  const r=routeFor(people,zip); if(!r.stops.length){ toast(r.skipped.length?`No usable addresses in ${zip}`:`No Active accounts in ${zip}`); if(!r.skipped.length) return; }
-  showRoute('ZIP '+zip, orderStops(r.stops), r.skipped); }
-function showRoute(title, ordered, skipped){
-  const ps=parts(ordered); const single=ordered.length===1?ordered[0]:null;
-  sheet(`<h3>Route ${esc(title)}</h3><p class="lbl hint">${ordered.length} stop${ordered.length===1?'':'s'}${ps.length>1?` in ${ps.length} parts of up to ${STOPS_PER_PART}`:''}. Google Maps starts from your location.</p>
-   ${ps.map((pt,i)=>`<div class="group"><div class="item col"><b>${ps.length>1?`Part ${i+1} — stops ${i*STOPS_PER_PART+1}–${i*STOPS_PER_PART+pt.length}`:'Stops'}</b>
-     <ol class="stops" start="${i*STOPS_PER_PART+1}">${pt.map(x=>`<li>${esc(x.name)} <span class="lbl">${esc(x.address)}${x.lat==null?' · no pin':''}</span></li>`).join('')}</ol>
-     <a class="btn full" href="${mapsPathUrl(pt)}">Open ${ps.length>1?'Part '+(i+1)+' ':''}in Google Maps</a></div></div>`).join('')}
-   ${single?`<a class="btn ghost full" href="${appleDirections(single.address)}">Open in Apple Maps</a>`:ps.length?'<p class="lbl hint">Apple Maps links take one stop at a time, so multi-stop routes open in Google Maps.</p>':''}
-   ${skipped.length?`<h2>Left out</h2><div class="group">${skipped.map(k=>`<div class="item"><span>${esc(k.name)}</span><span class="lbl">${esc(k.reason)}</span></div>`).join('')}</div>`:''}
-   <button class="btn ghost full" data-close>Done</button>`);
-}
-function pickSheet(){
-  let all=false, chosen=new Set(), q='';
-  const cands=()=>people.filter(p=>located(p)&&(all||isActiveList(p))).sort(sortAZ);
-  const draw=s=>{ const list=filterNames(cands(),q);
-    $('#pl',s).innerHTML=list.map(p=>`<label class="pick"><input type="checkbox" data-c="${p.id}" ${chosen.has(p.id)?'checked':''}> ${esc(cardName(p))} <span class="lbl">${esc(daysLabel(p))}</span></label>`).join('')||'<div class="empty">No one with a map location</div>';
-    $('#pc',s).textContent=`Route ${chosen.size} selected`; $$('[data-c]',s).forEach(c=>c.onchange=()=>{ c.checked?chosen.add(+c.dataset.c):chosen.delete(+c.dataset.c); $('#pc',s).textContent=`Route ${chosen.size} selected`; }); };
-  sheet(`<h3>Route selected</h3><input class="search" id="pq" placeholder="Search name"><label class="check"><input type="checkbox" id="pa"> Include all (not just Active)</label>
-   <button class="btn ghost full" id="paste">Paste names…</button><div id="pl" class="picklist"></div><div id="pm"></div><button class="btn full" id="pc">Route 0 selected</button><button class="btn ghost full" data-close>Cancel</button>`, s=>{
-    $('#pq',s).oninput=e=>{ q=e.target.value; draw(s); }; $('#pa',s).onchange=e=>{ all=e.target.checked; draw(s); };
-    $('#paste',s).onclick=()=>{ const box=$('#pm',s); box.innerHTML=`<textarea id="pt" rows="4" placeholder="One per line or comma: Smith J, Garfield, Margosian K."></textarea><button class="btn small full" id="pgo">Match names</button><div id="pr"></div>`;
-      $('#pgo',s).onclick=()=>{ const r=matchNames(parseNames($('#pt',s).value), cands()); r.matched.forEach(([,p])=>chosen.add(p.id));
-        $('#pr',s).innerHTML=`<p class="lbl">${r.matched.length} matched and ticked.</p>${r.ambiguous.map(([raw,ps])=>`<p class="lbl">“${esc(raw)}” matches several: ${ps.map(p=>esc(cardName(p))).join(', ')} — tick the right one.</p>`).join('')}${r.unmatched.length?`<p class="lbl">No match: ${r.unmatched.map(esc).join(', ')}</p>`:''}`; draw(s); }; };
-    $('#pc',s).onclick=()=>{ const ch=people.filter(p=>chosen.has(p.id)); const stops=distinctStops(ch.map(p=>{ const a=primaryAddress(p); const ad=a?forMaps(a.street,a.zip):''; const loc=located(p); return ad?{name:listName(p),id:p.id,address:ad,lat:loc?.[0]??null,lng:loc?.[1]??null}:null; }).filter(Boolean));
-      if(!stops.length){ toast('Pick at least one person'); return; } showRoute('selected', orderStops(stops), []); };
-    draw(s);
-  });
-}
+  function init() {
+    if (ready) return; ready = true;
+    map = L.map('map', { zoomControl: false, attributionControl: true }).setView([42.73, -84.55], 11);
+    L.control.zoom({ position: 'bottomleft' }).addTo(map);
+    let ok = 0, bad = 0;
+    const esri = () => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Tiles © Esri' });
+    tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' })
+      .on('tileload', () => ok++)
+      .on('tileerror', () => { if (++bad >= 4 && ok === 0 && tiles) { map.removeLayer(tiles); tiles = null; esri().addTo(map); } })
+      .addTo(map);
+    layer = L.layerGroup().addTo(map);
+    map.on('click', () => select(null));
+    $('#btn-add-marker').onclick = addMarker;
+    $('#btn-clear-unrun').onclick = async () => {
+      const n = Store.stops().filter(s => !s.ran).length;
+      if (!n) return toast('No unrun stops to clear');
+      if (await confirm('Clear unrun stops?', `Removes ${n} scanned stop${n === 1 ? '' : 's'} with no run text sent yet. Stops that got a run text and your own markers stay.`, 'Clear unrun')) { Store.clearStops(true); select(null); toast(`Cleared ${n} unrun`); }
+    };
+    $('#btn-clear-all').onclick = async () => {
+      const n = Store.stops().length;
+      if (!n) return toast('No scanned stops to clear');
+      if (await confirm('Clear all scanned stops?', `Removes all ${n} scanned stop${n === 1 ? '' : 's'}, run or not. Your own markers stay.`, 'Clear all')) { Store.clearStops(false); select(null); toast(`Cleared ${n} stops`); }
+    };
+    Store.onChange(render);
+    render();
+  }
+  function shown() { if (!ready) init(); setTimeout(() => { map.invalidateSize(); if (!missingN && !selected) fit(); }, 60); }
 
-/* ---- DAILY RUN ---- */
-function drawDaily(){
-  const st=mapState, map=st.map, now=Date.now();
-  if(!st.dayView){ const sv=startView(people,now); if(sv.kind==='12h') st.dayView={kind:'12h'};
-    else if(sv.kind==='day'){ st.dayView={kind:'day',day:sv.day}; toast(`No runs in the last 12 hours — showing ${dayLabel(sv.day)}`); }
-    else { st.dayView={kind:'12h'}; toast('No runs logged yet'); } }
-  const dv=st.dayView; const win = dv.kind==='12h'?[now-WINDOW_MS,now]:dayWindow(dv.day);
-  const visits=visitsIn(people,win); const sp=spots(visits);
-  const title = dv.kind==='12h'?'Last 12h':dayLabel(dv.day);
-  $('#daybar').innerHTML=`<button class="btn small ghost" id="dprev">◀</button><button class="btn small ${dv.kind==='12h'?'':'ghost'}" id="d12">Last 12h</button><button class="btn small ${dv.kind==='day'&&+dv.day===+addDays(today0(),-1)?'':'ghost'}" id="dy">Yesterday</button><button class="btn small ghost" id="dnext">▶</button>`;
-  st.layer.clearLayers(); st.markers.clear();
-  const path=visits.map(v=>v.point).filter(Boolean); if(path.length>1) L.polyline(path,{color:'#f2c14e',weight:2,opacity:.8}).addTo(st.layer);
-  const mk=new Map();
-  sp.forEach(s=>{ const icon=L.divIcon({className:'runpin',html:`<span>${s.numbers.join(',')}</span>`,iconSize:null});
-    const m=L.marker(s.point,{icon}).addTo(st.layer).bindPopup(nameCard(s.person,' · runs '+s.numbers.join(',')),{closeButton:false,className:'npop'}); mk.set(s.person.id,m); });
-  if(path.length) map.fitBounds(path,{padding:[40,40],maxZoom:15});
-  $('#runlist').innerHTML=`<h2>Runs — ${esc(title)} (${visits.length})</h2><div class="group">${visits.map(v=>`<div class="item tap" data-v="${v.person.id}"><span class="num">${v.number}</span><div class="grow"><div>${esc(cardName(v.person))} <span class="lbl">${timeOnly(v.run.at)}</span></div><div class="lbl">${esc(v.run.result)}${v.run.note?' · '+esc(v.run.note):''}${v.point?'':' · no map location'}</div></div><button class="btn small ghost" data-o="${v.person.id}">Open</button></div>`).join('')||'<div class="item lbl">No runs in this view.</div>'}</div>`;
-  $$('[data-v]').forEach(r=>r.onclick=e=>{ if(e.target.closest('[data-o]')) return; const m=mk.get(+r.dataset.v); if(m){ map.setView(m.getLatLng(),16); m.openPopup(); window.scrollTo({top:0,behavior:'smooth'}); } else toast('No map location for this profile'); });
-  $$('[data-o]').forEach(b=>b.onclick=()=>openProfile(+b.dataset.o));
-  const setDay=d=>{ st.dayView=d; drawDaily(); };
-  $('#d12').onclick=()=>setDay({kind:'12h'});
-  $('#dy').onclick=()=>{ const y=addDays(today0(),-1); const has=visitsIn(people,dayWindow(y)).length; if(!has) toast('No runs yesterday'); setDay({kind:'day',day:y}); };
-  $('#dprev').onclick=()=>{ const from= dv.kind==='12h'?now-WINDOW_MS:dayWindow(dv.day)[0]; const d=nearestEarlierDay(people,from); if(d) setDay({kind:'day',day:d}); else toast('No earlier runs'); };
-  $('#dnext').onclick=()=>{ if(dv.kind==='12h'){ toast('Already at the latest runs'); return; } const end=dayWindow(dv.day)[1]; const d=nearestLaterDay(people,end);
-    if(d&&+d<=+today0()) setDay({kind:'day',day:d}); else if(+dv.day<+today0()) setDay({kind:'day',day:today0()}); else toast('No later runs'); };
-}
+  const stopIcon = s => L.divIcon({ className: 'pin-wrap', iconSize: [30, 30], iconAnchor: [15, 15],
+    html: `<div class="pin ${s.ran ? 'ran' : ''} ${selected === s.id ? 'sel' : ''}">${s.n}</div>` });
+  const markIcon = m => L.divIcon({ className: 'pin-wrap', iconSize: [30, 40], iconAnchor: [15, 38],
+    html: `<div class="mpin ${m.ran ? 'ran' : ''} ${selected === m.id ? 'sel' : ''}"><span>★</span></div>` });
+
+  function locate(item, addr, save) {
+    if (item.lat != null && item.geoFor === addr) return true;
+    Geo.lookup(addr).then(g => { if (g) save({ lat: g.lat, lon: g.lon, geoFor: addr }); else if (item.geoFor !== addr + '#none') save({ lat: null, lon: null, geoFor: addr + '#none' }); });
+    return false;
+  }
+  function render() {
+    if (!ready) return;
+    layer.clearLayers();
+    const stops = Store.stops(), marks = Store.markers();
+    let missing = 0;
+    for (const s of stops) {
+      const a = stopAddr(s);
+      if (!locate(s, a, p => Store.updateStop(s.id, p))) { if (s.geoFor !== a + '#none') missing++; continue; }
+      L.marker([s.lat, s.lon], { icon: stopIcon(s), bubblingMouseEvents: false, zIndexOffset: s.ran ? 0 : 500 + s.n }).on('click', () => select(s.id)).addTo(layer);
+    }
+    for (const m of marks) {
+      const a = markerAddr(m);
+      if (!locate(m, a, p => Store.updateMarker(m.id, p))) { if (m.geoFor !== a + '#none') missing++; continue; }
+      L.marker([m.lat, m.lon], { icon: markIcon(m), bubblingMouseEvents: false, zIndexOffset: 2000 }).on('click', () => select(m.id)).addTo(layer);
+    }
+    const lost = [...stops, ...marks].filter(x => x.geoFor && x.geoFor.endsWith('#none')).length;
+    const st = $('#map-status');
+    st.textContent = missing ? `Finding ${missing} address${missing === 1 ? '' : 'es'}…` : lost ? `${lost} address${lost === 1 ? '' : 'es'} not found on the map` : '';
+    st.hidden = !st.textContent;
+    $('#map-count').textContent = `${stops.filter(s => !s.ran).length} to go · ${stops.filter(s => s.ran).length} ran · ${marks.length} marker${marks.length === 1 ? '' : 's'}`;
+    missingN = missing;
+    if (!missing && !selected && located() !== fittedN) fit();
+    card();
+  }
+  const located = () => [...Store.stops(), ...Store.markers()].filter(x => x.lat != null).length;
+  /** Shows every pin; runs again only when the number of pins on the map changes. */
+  function fit() {
+    const pts = [...Store.stops(), ...Store.markers()].filter(x => x.lat != null).map(x => [x.lat, x.lon]);
+    fittedN = pts.length; if (!pts.length) return;
+    map.fitBounds(pts, { padding: [40, 40], maxZoom: 15 });
+  }
+  function select(id) { selected = id; render(); }
+
+  const ranLine = x => x.ran ? `<div class="card-ran">✓ Run text ${esc(UI.when(x.ran.at))} · ${esc([x.ran.result, x.ran.note].filter(Boolean).join(', '))} <button class="link" data-act="undo">Undo</button></div>` : '';
+  /** Go + Send run text side by side on every card (Android 9.3+). Sending marks the stop as run. */
+  function card() {
+    const c = $('#card');
+    const s = Store.stops().find(x => x.id === selected), m = !s && Store.markers().find(x => x.id === selected);
+    $('#map-view').classList.toggle('has-card', !!(s || m));
+    if (!s && !m) { c.hidden = true; c.innerHTML = ''; return; }
+    c.hidden = false;
+    const it = s || m, a = s ? stopAddr(s) : markerAddr(m);
+    const badge = s ? `<span class="badge ${s.ran ? 'ran' : ''}">${s.n}</span>` : `<span class="badge star ${m.ran ? 'ran' : ''}">★</span>`;
+    c.innerHTML = `<div class="card-head">${badge}<div><div class="card-name">${esc(it.name)}</div><div class="card-addr">${esc(a)}</div>${m && m.phone ? `<a class="card-phone" href="${esc(telUrl(m.phone))}">📞 ${esc(m.phone)}</a>` : ''}${ranLine(it)}</div><button class="x" aria-label="Close">×</button></div>
+      <div class="card-btns"><a class="btn primary" data-act="go" href="${esc(navUrl(a))}" target="_blank" rel="noopener">Go</a><button class="btn run" data-act="run">Send run text</button></div>
+      ${m ? `<div class="card-btns"><button class="btn" data-act="notes">Notes${m.notes ? ' •' : ''}</button></div>` : ''}`;
+    c.querySelector('[data-act=run]').onclick = () => RunText.pick(it.name, r => markRun(it.id, !!s, r));
+    const u = c.querySelector('[data-act=undo]');
+    if (u) u.onclick = () => s ? Store.updateStop(s.id, { ran: null }) : Store.updateMarker(m.id, { ran: null });
+    if (m) c.querySelector('[data-act=notes]').onclick = () => notes(m.id);
+    c.querySelector('.x').onclick = () => select(null);
+  }
+  function markRun(id, isStop, r) {
+    const ran = { at: Date.now(), result: r.result, note: r.note };
+    if (isStop) { if (!Store.stops().some(x => x.id === id)) throw new Error('that stop was cleared'); Store.updateStop(id, { ran }); return; }
+    const m = Store.markers().find(x => x.id === id); if (!m) throw new Error('that marker was deleted');
+    Store.updateMarker(id, { ran, log: (m.log || []).slice(-49).concat({ at: ran.at, text: 'Texted group: ' + [r.result, r.note].filter(Boolean).join(', ') }) });
+  }
+
+  /* ---- manual markers ---- */
+  const formHtml = (m = {}) => `<label>Name<input name="name" autocomplete="off" value="${esc(m.name || '')}"></label>
+    <label>Address<input name="address" autocomplete="off" placeholder="123 Main St, Town MI 48800" value="${esc(m.address || '')}"></label>
+    <label>Phone number<input name="phone" type="tel" inputmode="tel" autocomplete="off" value="${esc(m.phone || '')}"></label><p class="err" hidden></p>`;
+  const readForm = w => ({ name: w.querySelector('[name=name]').value.trim(), address: w.querySelector('[name=address]').value.trim(), phone: w.querySelector('[name=phone]').value.trim() });
+  const checkForm = w => { const v = readForm(w), e = w.querySelector('.err'); if (!v.name || !v.address) { e.textContent = 'Name and address are needed.'; e.hidden = false; return false; } return true; };
+  const asStop = v => { const parts = v.address.split(','); return { name: v.name, street: parts[0].trim(), city: '', state: '', zip: (v.address.match(/\b\d{5}\b(?!.*\b\d{5}\b)/) || [''])[0] }; };
+  function dupes(v, skipId) {
+    const me = asStop(v);
+    const hits = Store.stops().filter(s => SheetParser.same(s, me)).map(s => `#${s.n} ${s.name}`);
+    hits.push(...Store.markers().filter(m => m.id !== skipId && SheetParser.same(asStop(m), me)).map(m => `★ ${m.name}`));
+    return hits;
+  }
+  async function warnDupes(v, skipId) {
+    const hits = dupes(v, skipId);
+    if (!hits.length) return true;
+    return modal('Possible duplicate', `<p>This looks like a stop already on the map:</p><ul class="dupes">${hits.map(h => `<li>${esc(h)}</li>`).join('')}</ul>`,
+      [{ label: 'Cancel', value: false }, { label: 'Add anyway', value: true, kind: 'primary' }]);
+  }
+  async function addMarker() {
+    const v = await modal('Add marker', formHtml(), [{ label: 'Cancel', value: null }, { label: 'Add', kind: 'primary', check: checkForm, value: readForm }], w => w.querySelector('input').focus());
+    if (!v || !(await warnDupes(v))) return;
+    const m = Store.addMarker(v);
+    toast('Marker added');
+    Geo.lookup(v.address).then(g => { if (g) { selected = m.id; fittedN = located(); map.setView([g.lat, g.lon], Math.max(map.getZoom(), 14)); render(); } else toast('Address not found on the map; check it in Notes → Edit'); });
+  }
+
+  /* ---- notes page ---- */
+  function notes(id) {
+    const m = Store.markers().find(x => x.id === id); if (!m) return;
+    const p = $('#notes-page'); p.hidden = false;
+    p.innerHTML = `<header class="bar"><button class="link" data-act="back">‹ Map</button><h2>${esc(m.name)}</h2><span></span></header>
+      <div class="notes-body"><div class="notes-meta"><div>${esc(m.address)}</div>${m.phone ? `<a href="${esc(telUrl(m.phone))}">📞 ${esc(m.phone)}</a>` : ''}</div>
+      <textarea id="notes-text" placeholder="Notes for this stop…">${esc(m.notes || '')}</textarea>
+      <div class="notes-saved" id="notes-saved">${m.notesAt ? 'Saved ' + esc(when(m.notesAt)) : 'Saves automatically'}</div>
+      ${(m.log || []).length ? `<details class="notes-log"><summary>Edit history (${m.log.length})</summary><ul>${m.log.slice().reverse().map(l => `<li><b>${esc(when(l.at))}</b> ${esc(l.text)}</li>`).join('')}</ul></details>` : ''}
+      <div class="notes-btns"><a class="btn primary" href="${esc(navUrl(m.address))}" target="_blank" rel="noopener">Go</a><button class="btn" data-act="edit">Edit marker</button><button class="btn danger" data-act="del">Delete marker</button></div></div>`;
+    const ta = $('#notes-text'); let t, last = m.notes || '';
+    const flush = () => { clearTimeout(t); const text = ta.value; if (text === last) return; const cur = Store.markers().find(x => x.id === id); if (!cur) return;
+      const at = Date.now(); const log = (cur.log || []).slice(-49);
+      if (log.length && at - log[log.length - 1].at < 5 * 60e3) log[log.length - 1] = { at, text: text.slice(0, 120) }; else log.push({ at, text: text.slice(0, 120) });
+      Store.updateMarker(id, { notes: text, notesAt: at, log }, true); last = text; $('#notes-saved').textContent = 'Saved ' + when(at); };
+    ta.oninput = () => { $('#notes-saved').textContent = 'Saving…'; clearTimeout(t); t = setTimeout(flush, 600); };
+    ta.onblur = flush;
+    const close = () => { flush(); p.hidden = true; p.innerHTML = ''; render(); };
+    p.querySelector('[data-act=back]').onclick = close;
+    p.querySelector('[data-act=edit]').onclick = async () => {
+      flush(); const cur = Store.markers().find(x => x.id === id);
+      const v = await modal('Edit marker', formHtml(cur), [{ label: 'Cancel', value: null }, { label: 'Save', kind: 'primary', check: checkForm, value: readForm }]);
+      if (!v || !(await warnDupes(v, id))) return;
+      Store.updateMarker(id, v); notes(id);
+    };
+    p.querySelector('[data-act=del]').onclick = async () => {
+      if (!(await confirm('Delete marker?', `Deletes “${m.name}” and its notes from this phone.`, 'Delete'))) return;
+      clearTimeout(t); Store.deleteMarker(id); selected = null; p.hidden = true; p.innerHTML = ''; toast('Marker deleted');
+    };
+  }
+  return { init, shown, notes, select, fit };
+})();

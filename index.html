@@ -14,15 +14,41 @@
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <link rel="stylesheet" href="styles.css">
 </head><body>
-<header id="top"><button id="back" class="navbtn hidden">‹ Back</button><button id="gear" class="navbtn" aria-label="Settings">⚙︎</button><h1 id="title">Credit Tracker</h1><button id="addBtn" class="navbtn right" aria-label="New profile">＋</button></header>
-<main id="view"></main>
-<nav id="tabs"><button data-tab="active" class="on">Active</button><button data-tab="charged">Charged off</button><button data-tab="resolved">Resolved</button><button data-tab="map">Map</button><button data-tab="trackers">Trackers</button></nav>
-<div id="sheet" class="hidden"></div>
-<div id="toast" class="hidden"></div>
-<div id="update" class="hidden">Update available, tap to refresh</div>
+<header id="top" class="bar"><span></span><h1 id="title">Scanner</h1><button id="gear" class="navbtn" aria-label="Settings">⚙︎</button></header>
+<main>
+  <section id="scan-view">
+    <div class="scan-hero">
+      <div class="scan-art" aria-hidden="true"><div></div><div></div><div></div></div>
+      <h2>Scan run sheets</h2>
+      <p>Fan out up to 16 sheets in two rows so each header shows (name and address). Take a photo or pick several. Sheets are read on this phone, in order: top row left to right, then the bottom row.</p>
+      <div class="scan-btns"><button id="btn-cam" class="btn primary big">📷 Take photo</button><button id="btn-pics" class="btn big">🖼 Choose photos</button></div>
+      <input id="cam" type="file" accept="image/*" capture="environment" hidden>
+      <input id="pics" type="file" accept="image/*" multiple hidden>
+      <progress id="scan-bar" max="100" value="0" hidden></progress>
+      <div id="scan-status" aria-live="polite"></div>
+      <div id="scan-count"></div>
+      <p class="privacy">🔒 Photos never leave this phone and are not saved. Phone numbers are never read.</p>
+    </div>
+  </section>
+  <section id="map-view" hidden>
+    <div id="map"></div>
+    <div class="map-tools"><button id="btn-add-marker" class="btn primary">＋ Add marker</button><button id="btn-clear-unrun" class="btn">Clear unrun</button><button id="btn-clear-all" class="btn danger">Clear all</button></div>
+    <div id="map-count" class="chip"></div>
+    <div id="map-status" class="chip warn" hidden></div>
+    <div id="card" class="card" hidden></div>
+  </section>
+</main>
+<nav id="tabs"><button data-tab="scan" class="on">📷<span>Scanner</span></button><button data-tab="map">🗺<span>Map</span></button></nav>
+<div id="notes-page" hidden></div>
+<div id="toast"></div>
+<button id="update" hidden>Update ready, tap to refresh</button>
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="js/db.js"></script>
-<script src="js/model.js"></script>
-<script src="js/app.js"></script>
+<script src="vendor/tesseract/tesseract.min.js"></script>
+<script src="js/parser.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ocr.js"></script>
+<script src="js/runtext.js"></script>
 <script src="js/map.js"></script>
+<script src="js/app.js"></script>
 </body></html>
