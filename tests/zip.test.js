@@ -2,7 +2,7 @@
 // Run: PORT=8765 SHOTS=/workspace node tests/zip.test.js   (needs a static server on PORT, playwright, Chrome)
 'use strict';
 const { chromium } = require('playwright');
-const PORT = process.env.PORT || 8765, BASE = `http://127.0.0.1:${PORT}/`, SHOTS = process.env.SHOTS || '/tmp';
+const PORT = process.env.PORT || 8765, BASE = process.env.BASE || `http://127.0.0.1:${PORT}/`, SHOTS = process.env.SHOTS || '/tmp';
 let fails = 0; const ok = (name, c, extra = '') => { console.log((c ? 'PASS ' : 'FAIL ') + name + (c ? '' : '  ' + extra)); if (!c) fails++; };
 const STOPS = [   // made-up names; #1 sits exactly on the 48910 label point so a label covers it
   { name: 'Robin Test', street: '1517 Cedar Ln', city: 'Lansing', state: 'MI', zip: '48910', lat: 42.6971, lon: -84.5251 },
