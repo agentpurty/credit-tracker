@@ -1,8 +1,8 @@
-/* Credit Tracker 2.0: Scanner + Map. Everything stays on this phone. */
+/* Credit Tracker 2.1: Scanner + Map. Everything stays on this phone. */
 'use strict';
 (() => {
   const { $, esc, toast, modal } = UI;
-  const VERSION = '2.0';
+  const VERSION = '2.1';
 
   /* ---- tabs ---- */
   function tab(name) {

@@ -27,6 +27,7 @@ const MapView = (() => {
       .addTo(map);
     layer = L.layerGroup().addTo(map);
     map.on('click', () => select(null));
+    legendSetup();
     $('#btn-add-marker').onclick = addMarker;
     $('#btn-clear-unrun').onclick = async () => {
       const n = Store.stops().filter(s => !s.ran).length;
@@ -48,6 +49,22 @@ const MapView = (() => {
   const markIcon = m => L.divIcon({ className: 'pin-wrap', iconSize: [30, 40], iconAnchor: [15, 38],
     html: `<div class="mpin ${m.ran ? 'ran' : ''} ${selected === m.id ? 'sel' : ''}"><span>★</span></div>` });
 
+  /** 2.1: the selected pin goes in a pane above the ZIP labels; the rest stay under them. */
+  const selPane = id => selected === id ? { pane: 'selPin' } : {};
+
+  /* ---- 2.1: Legend panel with the ZIP code areas switch at the top (saved on this phone) ---- */
+  function legendSetup() {
+    const panel = $('#legend'), btn = $('#btn-legend'), sw = $('#zip-on'), st = $('#zip-status');
+    const intro = st.textContent;
+    ZipLayer.attach(map, s => { st.textContent = s === 'Off' ? intro : s; });
+    sw.checked = ZipLayer.isOn();
+    sw.onchange = () => ZipLayer.setOn(sw.checked);
+    const show = on => { panel.hidden = !on; btn.setAttribute('aria-expanded', on); btn.classList.toggle('on', on); };
+    btn.onclick = () => show(panel.hidden);
+    $('#legend-close').onclick = () => show(false);
+    for (const ev of ['click', 'dblclick', 'touchstart', 'wheel']) panel.addEventListener(ev, e => e.stopPropagation(), { passive: true });
+  }
+
   function locate(item, addr, save) {
     if (item.lat != null && item.geoFor === addr) return true;
     Geo.lookup(addr).then(g => { if (g) save({ lat: g.lat, lon: g.lon, geoFor: addr }); else if (item.geoFor !== addr + '#none') save({ lat: null, lon: null, geoFor: addr + '#none' }); });
@@ -61,12 +78,12 @@ const MapView = (() => {
     for (const s of stops) {
       const a = stopAddr(s);
       if (!locate(s, a, p => Store.updateStop(s.id, p))) { if (s.geoFor !== a + '#none') missing++; continue; }
-      L.marker([s.lat, s.lon], { icon: stopIcon(s), bubblingMouseEvents: false, zIndexOffset: s.ran ? 0 : 500 + s.n }).on('click', () => select(s.id)).addTo(layer);
+      L.marker([s.lat, s.lon], { icon: stopIcon(s), bubblingMouseEvents: false, zIndexOffset: s.ran ? 0 : 500 + s.n, ...selPane(s.id) }).on('click', () => select(s.id)).addTo(layer);
     }
     for (const m of marks) {
       const a = markerAddr(m);
       if (!locate(m, a, p => Store.updateMarker(m.id, p))) { if (m.geoFor !== a + '#none') missing++; continue; }
-      L.marker([m.lat, m.lon], { icon: markIcon(m), bubblingMouseEvents: false, zIndexOffset: 2000 }).on('click', () => select(m.id)).addTo(layer);
+      L.marker([m.lat, m.lon], { icon: markIcon(m), bubblingMouseEvents: false, zIndexOffset: 2000, ...selPane(m.id) }).on('click', () => select(m.id)).addTo(layer);
     }
     const lost = [...stops, ...marks].filter(x => x.geoFor && x.geoFor.endsWith('#none')).length;
     const st = $('#map-status');

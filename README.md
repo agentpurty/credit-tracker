@@ -1,4 +1,4 @@
-# Credit Tracker (iOS web app) 2.0
+# Credit Tracker (iOS web app) 2.1
 
 A small offline-first web app for an iPhone home screen with two screens: **Scanner** and **Map**.
 
@@ -10,6 +10,8 @@ A small offline-first web app for an iPhone home screen with two screens: **Scan
   Nominatim using the street address only (units removed, about one request a second) and cached on the phone.
   Pins are numbered in scan order and have Go (Apple Maps or Google Maps) and Mark done. **Add marker** creates your
   own stops (name, address, phone) with a Notes page.
+- **ZIP code areas (2.1):** Legend → ZIP code areas switch. Outlines and ZIP labels from the U.S. Census Bureau 2020
+  ZCTAs for mid-Michigan (`data/zcta_mid_michigan.json`, self-hosted, loaded only when the switch is first turned on).
 - Data lives only in this browser's storage (`localStorage` keys `ct2-*`). Data from 1.x (IndexedDB `credit-tracker`,
   `ct-settings`, `ct-tiles`) is left alone.
 - Install: open the site in Safari, then Share → Add to Home Screen.

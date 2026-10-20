@@ -1,9 +1,10 @@
 // Bump CACHE when publishing an update. New versions take over immediately (skipWaiting + clients.claim)
 // and open pages reload themselves. App files are network-first (cache is the offline fallback); the
 // text reader (vendor/tesseract, ~11 MB) is cache-first so it is only downloaded once.
-// Cross-origin requests (map tiles, address lookups) are never intercepted. Nothing here touches app data.
-const CACHE='credit-tracker-ios-2.0.0';
-const ASSETS=['./','index.html','styles.css','js/parser.js','js/ui.js','js/store.js','js/ocr.js','js/runtext.js','js/map.js','js/app.js','changelog.json','manifest.webmanifest',
+// data/ (ZIP areas, ~700 KB) is not pre-cached: it is fetched the first time the ZIP switch is turned on, then kept
+// for offline use like the app files. Cross-origin requests (map tiles, address lookups) are never intercepted. Nothing here touches app data.
+const CACHE='credit-tracker-ios-2.1.0';
+const ASSETS=['./','index.html','styles.css','js/parser.js','js/ui.js','js/store.js','js/ocr.js','js/runtext.js','js/zip.js','js/map.js','js/app.js','changelog.json','manifest.webmanifest',
  'icons/icon-180.png','icons/icon-192.png','icons/icon-512.png','vendor/leaflet/leaflet.js','vendor/leaflet/leaflet.css',
  'vendor/leaflet/images/marker-icon.png','vendor/leaflet/images/marker-icon-2x.png','vendor/leaflet/images/marker-shadow.png','vendor/leaflet/images/layers.png','vendor/leaflet/images/layers-2x.png',
  'vendor/tesseract/tesseract.min.js','vendor/tesseract/worker.min.js','vendor/tesseract/core/tesseract-core-lstm.wasm.js','vendor/tesseract/core/tesseract-core-simd-lstm.wasm.js','vendor/tesseract/lang/eng.traineddata.gz'];

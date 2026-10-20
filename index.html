@@ -32,9 +32,22 @@
   </section>
   <section id="map-view" hidden>
     <div id="map"></div>
-    <div class="map-tools"><button id="btn-add-marker" class="btn primary">＋ Add marker</button><button id="btn-clear-unrun" class="btn">Clear unrun</button><button id="btn-clear-all" class="btn danger">Clear all</button></div>
+    <div class="map-tools"><button id="btn-legend" class="btn" aria-expanded="false">Legend</button><button id="btn-add-marker" class="btn primary">＋ Add marker</button><button id="btn-clear-unrun" class="btn">Clear unrun</button><button id="btn-clear-all" class="btn danger">Clear all</button></div>
     <div id="map-count" class="chip"></div>
     <div id="map-status" class="chip warn" hidden></div>
+    <div id="legend" class="legend" hidden>
+      <div class="legend-head"><b>Legend</b><button class="x" id="legend-close" aria-label="Close legend">×</button></div>
+      <label class="switch-row"><span>ZIP code areas</span><input type="checkbox" id="zip-on" role="switch"><i></i></label>
+      <div class="legend-note" id="zip-status">Draws ZIP code areas with their numbers. Source: U.S. Census Bureau 2020 ZIP Code Tabulation Areas.</div>
+      <div class="legend-rows">
+        <div class="lrow"><span class="lgp">3</span><span>Scanned stop (number = scan order)</span></div>
+        <div class="lrow"><span class="lgp ran">3</span><span>Run text sent (yellow ring)</span></div>
+        <div class="lrow"><span class="lgm"><span>★</span></span><span>Your own marker</span></div>
+        <div class="lrow"><span class="lgp sel">3</span><span>Selected: its card is open (shown above ZIP labels)</span></div>
+        <div class="lrow"><span class="zip-line"></span><span>ZIP code area outline</span></div>
+        <div class="lrow"><span class="zip-chip">48910</span><span>ZIP code (always above pins, taps go through to the pin)</span></div>
+      </div>
+    </div>
     <div id="card" class="card" hidden></div>
   </section>
 </main>
@@ -49,6 +62,7 @@
 <script src="js/store.js"></script>
 <script src="js/ocr.js"></script>
 <script src="js/runtext.js"></script>
+<script src="js/zip.js"></script>
 <script src="js/map.js"></script>
 <script src="js/app.js"></script>
 </body></html>

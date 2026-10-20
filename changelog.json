@@ -1,5 +1,14 @@
 [
  {
+  "version": "2.1",
+  "date": "2026-10-20",
+  "notes": [
+   "Map: ZIP code areas. Blue outlines with each ZIP number on a white label, the same as the Android app. Labels always sit above the pins so they stay readable; tapping a label still selects the pin under it, and the selected pin comes in front of the labels while its card is open",
+   "New Legend button on the map with the ZIP code areas switch at the top (it stays on or off as you left it), plus what each pin means",
+   "ZIP areas come from the U.S. Census Bureau 2020 ZIP Code Tabulation Areas for mid-Michigan, served with the app (no keys, no other sites). The file is only downloaded the first time you turn the switch on, then works offline. Nothing is drawn below city-wide zoom"
+  ]
+ },
+ {
   "version": "2.0",
   "date": "2026-10-17",
   "notes": [
